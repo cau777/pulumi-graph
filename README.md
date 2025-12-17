@@ -47,7 +47,7 @@ Scripts
 
 - `npm run demo` — Run the capture + local UI server
 - `npm run ui:build` — Build the React UI (outputs to `ui-dist/`)
-- `npm run lint` — Lint with Biome (minimal config)
+- `npm run typecheck` — Check types
 - `npm run format` — Format with Prettier defaults
 - `npm run format:check` — Check formatting only
 
