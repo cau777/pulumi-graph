@@ -38,22 +38,21 @@ const main = async () => {
 
     // Run the program
     const { objects } = await import("../" + outFilePath)
-    // console.log(objects)
     const nodes = objects.map(o => {
-        const links = []
+        const links: Array<{ nodeIndex: number, prop: string }> = []
 
         const parseArg = (arg) => {
-            if (typeof arg === 'function')
-            {
+            if (typeof arg === 'function') {
                 if (arg.__tree) {
-                    console.log(arg.__tree)
-                    return 'Linked'
+                    links.push({
+                        nodeIndex: arg.__tree[0],
+                        prop: arg.__tree.slice(1).join('.'),
+                    })
+                    return 'Link ' + (links.length - 1)
                 }
                 return 'Function'
             }
             if (typeof arg === 'object') {
-                if (arg === null) return null
-
                 return arg && Object.fromEntries(Object.entries(arg).map(([k, v]) => [k, parseArg(v)]).filter(([_, v]) => Boolean(v)))
             }
             return arg
@@ -62,11 +61,12 @@ const main = async () => {
         return {
             id: o.tree.join('.'),
             label: o.name,
-            args: parseArg(o.args)
+            args: parseArg(o.args),
+            links
         }
     })
 
-    console.log(JSON.stringify(nodes))
+    console.log(JSON.stringify(nodes, null, 2))
 }
 
 main()

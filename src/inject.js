@@ -16,7 +16,6 @@ function createMock(tree) {
         },
 
         apply(target, thisArg, args) {
-            console.log(`[CALL] ${tree}(${args.length})`);
             return createMock([...tree, '()']);
         },
 
@@ -30,22 +29,18 @@ function createMock(tree) {
         },
 
         set(target, prop, value) {
-            // console.log(`[SET] ${name}.${String(prop)} =`, value);
             return true;
         },
 
         has(target, prop) {
-            // console.log(`[HAS] ${name}.${String(prop)}`);
             return false;
         },
 
         deleteProperty(target, prop) {
-            // console.log(`[DELETE] ${name}.${String(prop)}`);
             return true;
         },
 
         ownKeys() {
-            // console.log(`[KEYS] ${name}`);
             return [];
         },
 
