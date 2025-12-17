@@ -63,7 +63,7 @@ const main = async () => {
   const { objects } = await import("../" + outFilePath);
 
   // Helpers to produce a flattened key map for args (Mongo-style dot paths)
-  const isPlainObject = (v: any) =>
+  const isPlainObject = (v: unknown): v is Record<string, unknown> =>
     Object.prototype.toString.call(v) === "[object Object]";
   const flattenArgs = (value: any, prefix = ""): Record<string, unknown> => {
     const out: Record<string, string> = {};
@@ -71,7 +71,7 @@ const main = async () => {
       out[key] = v;
     };
 
-    const recur = (val: any, pref: string) => {
+    const recur = (val: unknown, pref: string) => {
       if (val == null) {
         push(pref, val);
         return;
@@ -84,7 +84,7 @@ const main = async () => {
         }
         keys.forEach((k) => {
           const np = pref ? `${pref}.${k}` : k;
-          recur((val as any)[k], np);
+          recur(val[k], np);
         });
         return;
       }
@@ -107,13 +107,13 @@ const main = async () => {
     } else if (prefix) {
       out[prefix] = value;
     } else {
-      out["value"] = value;
+      out.value = value;
     }
     return out;
   };
 
   // 6) Convert captured objects to the typed GraphData consumed by the UI
-  const nodes: GraphData = objects.map((o) => {
+  const nodes: GraphData = objects.map((o: any) => {
     const flattened = flattenArgs(o.args);
     const formatted = Object.entries(flattened).map(([key, value]) => {
       if ((value as any)?.__tree) {

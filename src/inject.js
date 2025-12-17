@@ -1,4 +1,3 @@
-// biome-ignore-all
 const objects = [];
 
 function createMock(tree) {
@@ -50,11 +49,13 @@ function createMock(tree) {
     },
   };
 
+  // This has to be a function (not a lambda or an object) so the `new` keyword works.
   const proxy = new Proxy(function () {}, handler);
   return proxy;
 }
 
 const baseRequire = require;
+// var is required to overwrite the global require function
 var require = (id) => {
   if (id.includes("pulumi")) {
     return createMock([id]);
