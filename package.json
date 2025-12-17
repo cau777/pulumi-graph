@@ -7,7 +7,7 @@
     "build": "tsc",
     "demo": "tsx ./src/index.ts -- ./pulumi-demo",
     "ui:build": "npm --prefix web install --no-audit --no-fund && npm --prefix web run build",
-    "lint": "biome lint .",
+    "lint": "biome lint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check"
   },

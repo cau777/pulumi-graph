@@ -1,12 +1,12 @@
 // Shared types for the Pulumi Graph data model
 
 export type GraphTextArg = {
-  type: 'text';
+  type: "text";
   content: string;
 };
 
 export type GraphLinkArg = {
-  type: 'link';
+  type: "link";
   // property path on the dependent node that links to the source node
   prop: string;
   // index of the source node this arg links to
