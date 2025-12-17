@@ -53,9 +53,9 @@ const main = async () => {
         if (typeof val === 'function') return '[Function]'
         try { return JSON.stringify(val) } catch { return String(val) }
     }
-    const flattenArgs = (value: any, prefix = ''): Record<string, string> => {
+    const flattenArgs = (value: any, prefix = ''): Record<string, unknown> => {
         const out: Record<string, string> = {}
-        const push = (key: string, v: any) => { out[key] = formatValue(v) }
+        const push = (key: string, v: any) => { out[key] = v }
 
         const recur = (val: any, pref: string) => {
             if (val == null) { push(pref, val); return }
@@ -82,45 +82,29 @@ const main = async () => {
         if (isPlainObject(value) || Array.isArray(value)) {
             recur(value, prefix)
         } else if (prefix) {
-            out[prefix] = formatValue(value)
+            out[prefix] = value
         } else {
-            out['value'] = formatValue(value)
+            out['value'] = value
         }
         return out
     }
 
     const nodes = objects.map(o => {
-        const links: Array<{ nodeIndex: number, prop: string }> = []
-
-        const parseArg = (arg) => {
-            if (typeof arg === 'function') {
-                if (arg.__tree) {
-                    if (typeof arg.__tree[0] !== 'number')
-                        return arg.__tree.join('.')
-                    links.push({
-                        nodeIndex: arg.__tree[0],
-                        prop: arg.__tree.slice(1).join('.'),
-                    })
-                    return 'Link ' + (links.length - 1)
-                }
-                return 'Function'
+        const argsFlat = flattenArgs(o.args)
+        const argsFormat = Object.entries(argsFlat).map(([k, v]) => {
+            if (v?.__tree) {
+                if (typeof v.__tree[0] !== 'number')
+                    return [k, {type: 'text', content: v.__tree.join('.')}]as const
+                return [k, { type: 'link', prop: v.__tree.slice(1).join('.'), source: v.__tree[0] }]as const
             }
-            if (typeof arg === 'object') {
-                return arg && Object.fromEntries(Object.entries(arg).map(([k, v]) => [k, parseArg(v)]).filter(([_, v]) => Boolean(v)))
-            }
-            return arg
-        }
+            return [k, {type:'text',content:JSON.stringify(v)}] as const
+        })
 
-        const node = {
+        return {
             pulumiClass: o.tree.join('.'),
             label: o.name,
-            args: parseArg(o.args),
-            links
-        } as any
-
-        // Precompute flattened args for UI consumption
-        node.argsFlat = flattenArgs(node.args || {})
-        return node
+            argsFlat: argsFormat,
+        }
     })
 
     const json = JSON.stringify(nodes, null, 2)

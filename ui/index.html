@@ -59,14 +59,14 @@
       // edges from links
       nodes.forEach((n, i) => {
         const target = String(i);
-        (n.links || []).forEach((l, idx) => {
-          const source = String(l.nodeIndex);
+        n.argsFlat.map(([k, v]) => v).filter(arg => arg.type === 'link').forEach((l, idx) => {
+          const source = String(l.source);
           const id = `e-${i}-${idx}-${source}`;
           const label = l.prop || '';
-          // Reverse direction: dependency -> dependent
           elements.push({ data: { id, source, target, label } });
         });
       });
+      console.log(elements);
       return elements;
     }
 
@@ -115,12 +115,11 @@
         return;
       }
       // Use pre-flattened args provided by the backend
-      const flat = rawNode.argsFlat || {};
-      const rows = Object.keys(flat).length
-        ? Object.entries(flat).map(([k,v]) => `<tr><th class="mono">${escapeHtml(k)}</th><td class="mono">${escapeHtml(v)}</td></tr>`).join('')
+      const flat = rawNode.argsFlat || [];
+      const rows = flat.length
+        ? flat.map(([k,v]) => `<tr><th class="mono">${escapeHtml(k)}</th><td class="mono">${v.type === 'text' ? escapeHtml(v.content) : 'Link'}</td></tr>`).join('')
         : '<tr><td colspan="2" class="muted">No args</td></tr>';
 
-      const safe = (o) => `<pre class="mono">${escapeHtml(JSON.stringify(o, null, 2))}</pre>`;
       el.innerHTML = `
         <div><strong>Label:</strong> ${escapeHtml(nodeData.label || '')}</div>
         <div><strong>Pulumi class:</strong> ${escapeHtml(nodeData.pulumiClass || '')}</div>
@@ -130,8 +129,6 @@
             ${rows}
           </tbody>
         </table>
-        <div style="margin-top:8px"><strong>Links:</strong></div>
-        ${safe(rawNode.links || [])}
       `;
     }
 
