@@ -12,23 +12,23 @@ function toElements(nodes: GraphData): ElementDefinition[] {
   nodes.forEach((n, i) => {
     const target = String(i)
     n.argsFlat.map(([, v]) => v).filter(a => a.type === 'link').forEach((l, idx) => {
-      const source = String((l as any).source)
+      const source = String((l ).source)
       const id = `e-${i}-${idx}-${source}`
-      const label = (l as any).prop || ''
+      const label = (l ).prop || ''
       elements.push({ data: { id, source, target, label } })
     })
   })
   return elements
 }
 
-const cyStyles: cytoscape.Stylesheet[] = [
+const cyStyles: cytoscape.StylesheetStyle[] = [
   { selector: 'node', style: {
       'background-color': '#4f46e5',
       'label': 'data(label)',
       'color': '#ffffff',
       'font-size': 10,
       'text-wrap': 'wrap',
-      'text-max-width': 200,
+      'text-max-width': '200',
       'text-valign': 'center',
       'text-halign': 'center',
       'padding': '10px',
