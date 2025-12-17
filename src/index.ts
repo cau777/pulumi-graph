@@ -1,9 +1,10 @@
 import {program} from 'commander'
 import {execSync} from 'node:child_process'
-import {readFileSync, writeFileSync} from "node:fs";
+import {existsSync, readFileSync, writeFileSync} from "node:fs";
 import http from 'node:http'
 import path from "node:path";
 import {type} from "node:os";
+import { GraphData, GraphNode } from "../shared/types";
 
 const main = async () => {
     program
@@ -89,7 +90,7 @@ const main = async () => {
         return out
     }
 
-    const nodes = objects.map(o => {
+    const nodes: GraphData = objects.map(o => {
         const argsFlat = flattenArgs(o.args)
         const argsFormat = Object.entries(argsFlat).map(([k, v]) => {
             if (v?.__tree) {
@@ -100,11 +101,12 @@ const main = async () => {
             return [k, {type:'text',content:JSON.stringify(v)}] as const
         })
 
-        return {
+        const node: GraphNode = {
             pulumiClass: o.tree.join('.'),
             label: o.name,
             argsFlat: argsFormat,
         }
+        return node
     })
 
     const json = JSON.stringify(nodes, null, 2)
@@ -112,19 +114,49 @@ const main = async () => {
 
     // Start a tiny local server to serve the UI and the graph data
     try {
-        const uiPath = path.join(process.cwd(), 'ui', 'index.html')
+        const uiDistDir = path.join(process.cwd(), 'ui-dist')
+        const uiPathDist = path.join(uiDistDir, 'index.html')
+        const uiLegacyPath = path.join(process.cwd(), 'ui', 'index.html')
         const jsonBuffer = Buffer.from(json, 'utf8')
 
         const server = http.createServer((req, res) => {
             const url = req.url || '/'
-            if (url === '/' || url.startsWith('/index.html')) {
+            // Serve static assets from ui-dist when available
+            if (url === '/' || url.startsWith('/index.html') || url.startsWith('/assets/')) {
+                const serveFromDist = existsSync(uiPathDist)
+                const requested = url === '/' ? 'index.html' : url.replace(/^\//, '')
+                const rootDir = serveFromDist ? uiDistDir : path.join(process.cwd(), 'ui')
+                const filePath = path.normalize(path.join(rootDir, requested))
+                if (!filePath.startsWith(rootDir)) {
+                    res.writeHead(403, { 'Content-Type': 'text/plain' })
+                    res.end('Forbidden')
+                    return
+                }
                 try {
-                    const html = readFileSync(uiPath)
-                    res.writeHead(200, { 'Content-Type': 'text/html; charset=UTF-8' })
-                    res.end(html)
+                    const data = readFileSync(filePath)
+                    const ext = path.extname(filePath).toLowerCase()
+                    const ctype =
+                        ext === '.html' ? 'text/html; charset=UTF-8' :
+                        ext === '.js' ? 'application/javascript; charset=UTF-8' :
+                        ext === '.css' ? 'text/css; charset=UTF-8' :
+                        ext === '.map' ? 'application/json; charset=UTF-8' :
+                        ext === '.svg' ? 'image/svg+xml' :
+                        ext === '.png' ? 'image/png' :
+                        'application/octet-stream'
+                    res.writeHead(200, { 'Content-Type': ctype })
+                    res.end(data)
                 } catch (e) {
-                    res.writeHead(500, { 'Content-Type': 'text/plain' })
-                    res.end('Failed to load UI')
+                    // If dist not found, fallback to legacy UI index
+                    if (!existsSync(uiPathDist) && existsSync(uiLegacyPath) && (url === '/' || url.startsWith('/index.html'))) {
+                        try {
+                            const html = readFileSync(uiLegacyPath)
+                            res.writeHead(200, { 'Content-Type': 'text/html; charset=UTF-8' })
+                            res.end(html)
+                            return
+                        } catch {}
+                    }
+                    res.writeHead(404, { 'Content-Type': 'text/plain' })
+                    res.end('Not found')
                 }
                 return
             }

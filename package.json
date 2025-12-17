@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "demo": "tsx ./src/index.ts -- ./pulumi-demo"
+    "demo": "tsx ./src/index.ts -- ./pulumi-demo",
+    "ui:build": "npm --prefix web install --no-audit --no-fund && npm --prefix web run build"
   },
   "dependencies": {
     "commander": "^14.0.2"
