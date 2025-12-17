@@ -33,6 +33,8 @@ This will:
 
 If auto‑open fails, copy the printed URL and open it manually.
 
+![project screenshot](https://github.com/cau777/pulumi-graph/blob/master/screenshot.png)
+
 Using with Your Own Project
 ---------------------------
 
