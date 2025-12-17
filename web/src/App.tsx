@@ -7,8 +7,9 @@ import { LinkIcon } from "./LinkIcon";
 function toElements(nodes: GraphData): ElementDefinition[] {
   const elements: ElementDefinition[] = [];
   nodes.forEach((n, i) => {
+    // Insert break opportunities into the label
     const label = (n.label || n.pulumiClass || String(i)).replace(
-      /-/g,
+      /[-\\./]/g,
       "-\u200b",
     );
     const classes = (n.pulumiClass || "").replace(/\./g, " ");

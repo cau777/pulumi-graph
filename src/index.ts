@@ -127,7 +127,7 @@ const main = async () => {
     });
 
     const node: GraphNode = {
-      pulumiClass: o.tree.join(),
+      pulumiClass: o.tree.join(""),
       label: o.name,
       argsFlat: argsFormat,
     };
@@ -135,7 +135,6 @@ const main = async () => {
   });
 
   const json = JSON.stringify(nodes, null, 2);
-  console.log(json);
 
   // Start a tiny local server to serve the UI and the graph data
   try {

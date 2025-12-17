@@ -23,7 +23,7 @@ function createMock(tree) {
     construct(target, args) {
       objects.push({
         tree: tree,
-        name: String(args[0]),
+        name: args[0] && String(args[0]),
         args: args[1],
       });
       return createMock([objects.length - 1]);
@@ -50,7 +50,7 @@ function createMock(tree) {
     },
   };
 
-  const proxy = new Proxy(function () { }, handler);
+  const proxy = new Proxy(function () {}, handler);
   return proxy;
 }
 
