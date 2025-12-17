@@ -1,6 +1,7 @@
 import {program} from 'commander'
 import {execSync} from 'node:child_process'
 import {readFileSync, writeFileSync} from "node:fs";
+import http from 'node:http'
 import path from "node:path";
 import {type} from "node:os";
 
@@ -75,23 +76,60 @@ const main = async () => {
     const json = JSON.stringify(nodes, null, 2)
     console.log(json)
 
-    // Open UI with base64-encoded data
+    // Start a tiny local server to serve the UI and the graph data
     try {
-        const base64 = Buffer.from(json, 'utf8').toString('base64')
         const uiPath = path.join(process.cwd(), 'ui', 'index.html')
-        const fileUrl = 'file:///' + uiPath.replace(/\\/g, '/').replace(/^([A-Za-z]):/, '$1:') + '#data=' + base64
+        const jsonBuffer = Buffer.from(json, 'utf8')
 
-        console.log('Opening UI with graph data...')
-        const platform = process.platform
-        if (platform === 'win32') {
-            execSync(`start "" "${fileUrl}"`, { stdio: 'ignore', cwd: process.cwd() })
-        } else if (platform === 'darwin') {
-            execSync(`open "${fileUrl}"`, { stdio: 'ignore', cwd: process.cwd() })
-        } else {
-            execSync(`xdg-open "${fileUrl}"`, { stdio: 'ignore', cwd: process.cwd() })
-        }
+        const server = http.createServer((req, res) => {
+            const url = req.url || '/'
+            if (url === '/' || url.startsWith('/index.html')) {
+                try {
+                    const html = readFileSync(uiPath)
+                    res.writeHead(200, { 'Content-Type': 'text/html; charset=UTF-8' })
+                    res.end(html)
+                } catch (e) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' })
+                    res.end('Failed to load UI')
+                }
+                return
+            }
+            if (url.startsWith('/data')) {
+                res.writeHead(200, {
+                    'Content-Type': 'application/json; charset=UTF-8',
+                    'Cache-Control': 'no-store'
+                })
+                res.end(jsonBuffer)
+                return
+            }
+
+            // Fallback 404
+            res.writeHead(404, { 'Content-Type': 'text/plain' })
+            res.end('Not found')
+        })
+
+        server.listen(0, '127.0.0.1', () => {
+            const address = server.address()
+            const port = typeof address === 'object' && address ? address.port : 0
+            const httpUrl = `http://127.0.0.1:${port}/`
+            console.log(`Graph UI available at ${httpUrl}`)
+
+            try {
+                const platform = process.platform
+                if (platform === 'win32') {
+                    // Use cmd built-in reliably
+                    execSync(`cmd /c start "" "${httpUrl}"`, { stdio: 'ignore' })
+                } else if (platform === 'darwin') {
+                    execSync(`open "${httpUrl}"`, { stdio: 'ignore' })
+                } else {
+                    execSync(`xdg-open "${httpUrl}"`, { stdio: 'ignore' })
+                }
+            } catch (e) {
+                console.warn('Failed to auto-open browser. Open this URL manually:', httpUrl)
+            }
+        })
     } catch (e) {
-        console.warn('Failed to auto-open UI. You can open ui/index.html manually and paste the data.', e)
+        console.warn('Failed to start local server for UI:', e)
     }
 }
 
