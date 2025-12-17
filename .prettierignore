@@ -1,0 +1,7 @@
+node_modules
+dist
+ui-dist
+web/node_modules
+pulumi-demo/node_modules
+pulumi-demo/dist
+pulumi-demo/out
