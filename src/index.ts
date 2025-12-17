@@ -2,6 +2,7 @@ import {program} from 'commander'
 import {execSync} from 'node:child_process'
 import {readFileSync, writeFileSync} from "node:fs";
 import path from "node:path";
+import {type} from "node:os";
 
 const main = async () => {
     program
@@ -47,6 +48,8 @@ const main = async () => {
         const parseArg = (arg) => {
             if (typeof arg === 'function') {
                 if (arg.__tree) {
+                    if (typeof arg.__tree[0] !== 'number')
+                        return arg.__tree.join('.')
                     links.push({
                         nodeIndex: arg.__tree[0],
                         prop: arg.__tree.slice(1).join('.'),
@@ -69,7 +72,27 @@ const main = async () => {
         }
     })
 
-    console.log(JSON.stringify(nodes, null, 2))
+    const json = JSON.stringify(nodes, null, 2)
+    console.log(json)
+
+    // Open UI with base64-encoded data
+    try {
+        const base64 = Buffer.from(json, 'utf8').toString('base64')
+        const uiPath = path.join(process.cwd(), 'ui', 'index.html')
+        const fileUrl = 'file:///' + uiPath.replace(/\\/g, '/').replace(/^([A-Za-z]):/, '$1:') + '#data=' + base64
+
+        console.log('Opening UI with graph data...')
+        const platform = process.platform
+        if (platform === 'win32') {
+            execSync(`start "" "${fileUrl}"`, { stdio: 'ignore', cwd: process.cwd() })
+        } else if (platform === 'darwin') {
+            execSync(`open "${fileUrl}"`, { stdio: 'ignore', cwd: process.cwd() })
+        } else {
+            execSync(`xdg-open "${fileUrl}"`, { stdio: 'ignore', cwd: process.cwd() })
+        }
+    } catch (e) {
+        console.warn('Failed to auto-open UI. You can open ui/index.html manually and paste the data.', e)
+    }
 }
 
 main()
