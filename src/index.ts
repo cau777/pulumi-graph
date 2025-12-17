@@ -4,6 +4,9 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import type { GraphData, GraphNode } from "../shared/types";
+import { promises as fs } from "node:fs";
+import * as os from "node:os";
+import { pathToFileURL } from "node:url";
 
 const main = async () => {
   program
@@ -36,12 +39,20 @@ const main = async () => {
   // 1) Install the Pulumi project's dependencies
   execSync(`${packageManager} install`, execOptions);
 
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pulumi-graph"));
+  console.log(`Temp directory: ${tempDir}`);
+  const transpiledPath = path.join(tempDir, "./transpiled");
+  const bundledPath = path.join(tempDir, "./bundled.js");
+
   // 2) Transpile TypeScript to JavaScript (no .d.ts needed)
-  execSync(`npx tsc --declaration false`, execOptions);
+  execSync(
+    `npx tsc --declaration false --outDir ${transpiledPath}`,
+    execOptions,
+  );
 
   // 3) Bundle to a single JS file to simplify mocking/injection
   execSync(
-    `npx esbuild dist/index.js --bundle --outfile=out/index.js --platform=node --packages=external`,
+    `npx esbuild ${path.join(transpiledPath, "index.js")} --bundle --outfile=${bundledPath} --platform=node --packages=external`,
     execOptions,
   );
 
@@ -50,17 +61,15 @@ const main = async () => {
     path.join(__dirname, "./inject.js"),
     "utf8",
   );
-  const outFilePath = path.join(projectPath, "out/index.js");
-
-  const bundleSource = readFileSync(outFilePath, "utf8");
+  const bundleSource = readFileSync(bundledPath, "utf8");
   const injectedSource = injectContent + bundleSource;
-  writeFileSync(outFilePath, injectedSource);
+  writeFileSync(bundledPath, injectedSource);
 
   // 5) Run the instrumented Pulumi program. It won't deploy anything, but it will output the objects that were created.
   // A Pulumi object is a class instantiated with `new`. They will be represented as nodes in the graph.
   // The links between nodes represent the arguments passed to the constructor of the Pulumi object that
   // depend on other objects.
-  const { objects } = await import("../" + outFilePath);
+  const { objects } = await import(pathToFileURL(bundledPath).href);
 
   // Helpers to produce a flattened key map for args (Mongo-style dot paths)
   const isPlainObject = (v: unknown): v is Record<string, unknown> =>
@@ -144,7 +153,7 @@ const main = async () => {
 
   // Start a tiny local server to serve the UI and the graph data
   try {
-    const uiDistDir = path.join(process.cwd(), "ui-dist");
+    const uiDistDir = path.join(__dirname, "..", "ui-dist");
     const uiPathDist = path.join(uiDistDir, "index.html");
     const jsonBuffer = Buffer.from(graphJson, "utf8");
 

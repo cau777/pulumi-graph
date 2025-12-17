@@ -37,7 +37,7 @@ Using with Your Own Project
 ---------------------------
 
 ```
-npm run demo -- ./path-to-your-pulumi-project
+npm run pulumi-graph -- ./path-to-your-pulumi-project
 ```
 
 The path must be the directory containing that project’s `package.json`.
@@ -45,7 +45,7 @@ The path must be the directory containing that project’s `package.json`.
 Scripts
 -------
 
-- `npm run demo` — Run the capture + local UI server
+- `npm run pulumi-graph` — Run the capture + local UI server
 - `npm run ui:build` — Build the React UI (outputs to `ui-dist/`)
 - `npm run typecheck` — Check types
 - `npm run format` — Format with Prettier defaults

@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "demo": "tsx ./src/index.ts -- ./pulumi-demo",
+    "pulumi-graph": "tsx ./src/index.ts --",
     "ui:build": "npm --prefix web install --no-audit --no-fund && npm --prefix web run build",
     "typecheck": "tsc --noEmit",
     "format": "prettier . --write",
