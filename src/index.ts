@@ -36,7 +36,10 @@ const main = async () => {
     const mocked = contents.replace('"use strict";\n', injectContent)
     writeFileSync(outFilePath, mocked)
 
-    // Run the program
+    // Run the Pulumi program. It won't deploy anything, but it will output the objects that were created.
+    // A Pulumi object is a class instantiated with `new`. They will be represented as nodes in the graph.
+    // The links between nodes represent the arguments passed to the constructor of the Pulumi object that
+    // depend on other objects.
     const { objects } = await import("../" + outFilePath)
     const nodes = objects.map(o => {
         const links: Array<{ nodeIndex: number, prop: string }> = []
@@ -59,7 +62,7 @@ const main = async () => {
         }
 
         return {
-            id: o.tree.join('.'),
+            pulumiClass: o.tree.join('.'),
             label: o.name,
             args: parseArg(o.args),
             links
