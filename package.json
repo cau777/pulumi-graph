@@ -1,0 +1,16 @@
+{
+  "name": "pulumi-graph",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "run": "tsx ./src/index.tsx"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.5.3",
+    "tsx": "^4.21.0"
+  },
+  "private": true
+}
