@@ -43,6 +43,52 @@ const main = async () => {
     // The links between nodes represent the arguments passed to the constructor of the Pulumi object that
     // depend on other objects.
     const { objects } = await import("../" + outFilePath)
+
+    // Helpers to produce a flattened key map for args (Mongo-style dot paths)
+    const isPlainObject = (v: any) => Object.prototype.toString.call(v) === '[object Object]'
+    const formatValue = (val: any): string => {
+        if (val == null) return String(val)
+        if (typeof val === 'string') return val
+        if (typeof val === 'number' || typeof val === 'boolean') return String(val)
+        if (typeof val === 'function') return '[Function]'
+        try { return JSON.stringify(val) } catch { return String(val) }
+    }
+    const flattenArgs = (value: any, prefix = ''): Record<string, string> => {
+        const out: Record<string, string> = {}
+        const push = (key: string, v: any) => { out[key] = formatValue(v) }
+
+        const recur = (val: any, pref: string) => {
+            if (val == null) { push(pref, val); return }
+            if (isPlainObject(val)) {
+                const keys = Object.keys(val)
+                if (keys.length === 0) { push(pref, '{}'); return }
+                keys.forEach(k => {
+                    const np = pref ? `${pref}.${k}` : k
+                    recur((val as any)[k], np)
+                })
+                return
+            }
+            if (Array.isArray(val)) {
+                if (val.length === 0) { push(pref, '[]'); return }
+                val.forEach((item, idx) => {
+                    const np = pref ? `${pref}.${idx}` : String(idx)
+                    recur(item, np)
+                })
+                return
+            }
+            push(pref, val)
+        }
+
+        if (isPlainObject(value) || Array.isArray(value)) {
+            recur(value, prefix)
+        } else if (prefix) {
+            out[prefix] = formatValue(value)
+        } else {
+            out['value'] = formatValue(value)
+        }
+        return out
+    }
+
     const nodes = objects.map(o => {
         const links: Array<{ nodeIndex: number, prop: string }> = []
 
@@ -65,12 +111,16 @@ const main = async () => {
             return arg
         }
 
-        return {
+        const node = {
             pulumiClass: o.tree.join('.'),
             label: o.name,
             args: parseArg(o.args),
             links
-        }
+        } as any
+
+        // Precompute flattened args for UI consumption
+        node.argsFlat = flattenArgs(node.args || {})
+        return node
     })
 
     const json = JSON.stringify(nodes, null, 2)
