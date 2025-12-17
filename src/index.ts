@@ -53,7 +53,7 @@ const main = async () => {
   const outFilePath = path.join(projectPath, "out/index.js");
 
   const bundleSource = readFileSync(outFilePath, "utf8");
-  const injectedSource = bundleSource.replace('"use strict";\n', injectContent);
+  const injectedSource = injectContent + bundleSource;
   writeFileSync(outFilePath, injectedSource);
 
   // 5) Run the instrumented Pulumi program. It won't deploy anything, but it will output the objects that were created.
