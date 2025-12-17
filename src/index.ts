@@ -3,7 +3,6 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
-import { type } from "node:os";
 import type { GraphData, GraphNode } from "../shared/types";
 
 const main = async () => {
@@ -21,38 +20,43 @@ const main = async () => {
   program.parse();
 
   const options = program.opts();
-  const [p] = program.args;
+  const [projectPath] = program.args;
 
-  console.log(`Installing dependencies for ${p} using ${options.p}...`);
-  const commandOpt = {
-    cwd: p,
+  // Selected package manager (defaults to npm). Accepts npm | pnpm | yarn | etc.
+  const packageManager: string = options.p;
+
+  console.log(
+    `Installing dependencies for ${projectPath} using ${packageManager}...`,
+  );
+  const execOptions = {
+    cwd: projectPath,
     stdio: "inherit",
   } as const;
 
-  // Install pulumi dependencies
-  execSync(`${options.p} install`, commandOpt);
+  // 1) Install the Pulumi project's dependencies
+  execSync(`${packageManager} install`, execOptions);
 
-  // Transform to JS
-  execSync(`npx tsc --declaration false`, commandOpt);
+  // 2) Transpile TypeScript to JavaScript (no .d.ts needed)
+  execSync(`npx tsc --declaration false`, execOptions);
 
-  // Concat to single file
+  // 3) Bundle to a single JS file to simplify mocking/injection
   execSync(
     `npx esbuild dist/index.js --bundle --outfile=out/index.js --platform=node --packages=external`,
-    commandOpt,
+    execOptions,
   );
 
-  // Add require mock
+  // 4) Inject our Pulumi mocking layer (see src/inject.js)
   const injectContent = readFileSync(
     path.join(__dirname, "./inject.js"),
     "utf8",
   );
-  const outFilePath = path.join(p, "out/index.js");
+  const outFilePath = path.join(projectPath, "out/index.js");
 
-  const contents = readFileSync(outFilePath, "utf8");
-  const mocked = contents.replace('"use strict";\n', injectContent);
-  writeFileSync(outFilePath, mocked);
+  const bundleSource = readFileSync(outFilePath, "utf8");
+  const injectedSource = bundleSource.replace('"use strict";\n', injectContent);
+  writeFileSync(outFilePath, injectedSource);
 
-  // Run the Pulumi program. It won't deploy anything, but it will output the objects that were created.
+  // 5) Run the instrumented Pulumi program. It won't deploy anything, but it will output the objects that were created.
   // A Pulumi object is a class instantiated with `new`. They will be represented as nodes in the graph.
   // The links between nodes represent the arguments passed to the constructor of the Pulumi object that
   // depend on other objects.
@@ -108,54 +112,59 @@ const main = async () => {
     return out;
   };
 
+  // 6) Convert captured objects to the typed GraphData consumed by the UI
   const nodes: GraphData = objects.map((o) => {
-    const argsFlat = flattenArgs(o.args);
-    const argsFormat = Object.entries(argsFlat).map(([k, v]) => {
-      if (v?.__tree) {
-        if (typeof v.__tree[0] !== "number")
-          return [k, { type: "text", content: v.__tree.join("") }] as const;
+    const flattened = flattenArgs(o.args);
+    const formatted = Object.entries(flattened).map(([key, value]) => {
+      if ((value as any)?.__tree) {
+        const t = (value as any).__tree as any[];
+        if (typeof t[0] !== "number")
+          return [key, { type: "text", content: t.join("") }] as const;
         return [
-          k,
+          key,
           {
             type: "link",
-            prop: v.__tree.slice(1).join(""),
-            source: v.__tree[0],
+            prop: t.slice(1).join(""),
+            source: t[0],
           },
         ] as const;
       }
-      return [k, { type: "text", content: JSON.stringify(v) }] as const;
+      return [key, { type: "text", content: JSON.stringify(value) }] as const;
     });
 
     const node: GraphNode = {
       pulumiClass: o.tree.join(""),
       label: o.name,
-      argsFlat: argsFormat,
+      argsFlat: formatted,
     };
     return node;
   });
 
-  const json = JSON.stringify(nodes, null, 2);
+  const graphJson = JSON.stringify(nodes, null, 2);
 
   // Start a tiny local server to serve the UI and the graph data
   try {
     const uiDistDir = path.join(process.cwd(), "ui-dist");
     const uiPathDist = path.join(uiDistDir, "index.html");
-    const uiLegacyPath = path.join(process.cwd(), "ui", "index.html");
-    const jsonBuffer = Buffer.from(json, "utf8");
+    const jsonBuffer = Buffer.from(graphJson, "utf8");
 
     const server = http.createServer((req, res) => {
       const url = req.url || "/";
-      // Serve static assets from ui-dist when available
+      // Serve static assets exclusively from ui-dist
       if (
         url === "/" ||
         url.startsWith("/index.html") ||
         url.startsWith("/assets/")
       ) {
-        const serveFromDist = existsSync(uiPathDist);
+        if (!existsSync(uiPathDist)) {
+          res.writeHead(404, { "Content-Type": "text/plain" });
+          res.end(
+            "UI not built. Run 'npm run ui:build' to generate the React UI (ui-dist/) before running the demo.",
+          );
+          return;
+        }
         const requested = url === "/" ? "index.html" : url.replace(/^\//, "");
-        const rootDir = serveFromDist
-          ? uiDistDir
-          : path.join(process.cwd(), "ui");
+        const rootDir = uiDistDir;
         const filePath = path.normalize(path.join(rootDir, requested));
         if (!filePath.startsWith(rootDir)) {
           res.writeHead(403, { "Content-Type": "text/plain" });
@@ -182,21 +191,6 @@ const main = async () => {
           res.writeHead(200, { "Content-Type": ctype });
           res.end(data);
         } catch (e) {
-          // If dist not found, fallback to legacy UI index
-          if (
-            !existsSync(uiPathDist) &&
-            existsSync(uiLegacyPath) &&
-            (url === "/" || url.startsWith("/index.html"))
-          ) {
-            try {
-              const html = readFileSync(uiLegacyPath);
-              res.writeHead(200, {
-                "Content-Type": "text/html; charset=UTF-8",
-              });
-              res.end(html);
-              return;
-            } catch {}
-          }
           res.writeHead(404, { "Content-Type": "text/plain" });
           res.end("Not found");
         }
@@ -222,10 +216,11 @@ const main = async () => {
       const httpUrl = `http://127.0.0.1:${port}/`;
       console.log(`Graph UI available at ${httpUrl}`);
 
+      // Attempt to open the default browser across platforms
       try {
         const platform = process.platform;
         if (platform === "win32") {
-          // Use cmd built-in reliably
+          // Using cmd /c start is reliable on Windows (empty title keeps quotes intact)
           execSync(`cmd /c start "" "${httpUrl}"`, { stdio: "ignore" });
         } else if (platform === "darwin") {
           execSync(`open "${httpUrl}"`, { stdio: "ignore" });
