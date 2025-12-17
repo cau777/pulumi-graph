@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "cytoscape": "^3.28.1",
+    "cytoscape": "^3.33.1",
     "pulumi-graph": "file:..",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

@@ -7,7 +7,10 @@ import { LinkIcon } from "./LinkIcon";
 function toElements(nodes: GraphData): ElementDefinition[] {
   const elements: ElementDefinition[] = [];
   nodes.forEach((n, i) => {
-    const label = n.label || n.pulumiClass || String(i);
+    const label = (n.label || n.pulumiClass || String(i)).replace(
+      /-/g,
+      "-\u200b",
+    );
     const classes = (n.pulumiClass || "").replace(/\./g, " ");
     elements.push({
       data: { id: String(i), label, pulumiClass: n.pulumiClass || "" },
@@ -38,13 +41,15 @@ const cyStyles: cytoscape.StylesheetStyle[] = [
       color: "#ffffff",
       "font-size": 10,
       "text-wrap": "wrap",
-      "text-max-width": "200",
+      "text-max-width": "50",
       "text-valign": "center",
       "text-halign": "center",
-      padding: "10px",
+      padding: "5px",
       shape: "round-rectangle",
       "border-color": "#4338ca",
       "border-width": 1,
+      width: 55,
+      height: 55,
     },
   },
   {
@@ -142,7 +147,6 @@ export const App: React.FC = () => {
         </div>
       </header>
       <div className="content">
-        <div id="cy" />
         <aside id="sidepanel">
           <h2>Details</h2>
           <Details
@@ -151,6 +155,7 @@ export const App: React.FC = () => {
             setSelection={setSelection}
           />
         </aside>
+        <div id="cy" />
       </div>
     </div>
   );
@@ -161,7 +166,7 @@ const Details: React.FC<{
   graphData: GraphData;
   setSelection: (selection: number) => void;
 }> = ({ selection, graphData, setSelection }) => {
-  if (!selection)
+  if (selection === undefined)
     return <div className="muted">Click a node to see its properties.</div>;
   const data = graphData[selection];
   return (
@@ -187,17 +192,17 @@ const Details: React.FC<{
           {data.argsFlat.map(([k, v]) => (
             <tr key={k}>
               <th className="mono">{k}</th>
-              <td className="mono">
+              <td className="mono value-cell">
                 {v.type === "text" ? (
                   v.content
                 ) : (
-                  <div>
+                  <>
                     <a onClick={() => setSelection(v.source)}>
                       <LinkIcon size={16} />
                       {graphData[v.source]?.label}
                     </a>
                     {v.prop}
-                  </div>
+                  </>
                 )}
               </td>
             </tr>

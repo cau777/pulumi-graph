@@ -61,17 +61,6 @@ const main = async () => {
   // Helpers to produce a flattened key map for args (Mongo-style dot paths)
   const isPlainObject = (v: any) =>
     Object.prototype.toString.call(v) === "[object Object]";
-  const formatValue = (val: any): string => {
-    if (val == null) return String(val);
-    if (typeof val === "string") return val;
-    if (typeof val === "number" || typeof val === "boolean") return String(val);
-    if (typeof val === "function") return "[Function]";
-    try {
-      return JSON.stringify(val);
-    } catch {
-      return String(val);
-    }
-  };
   const flattenArgs = (value: any, prefix = ""): Record<string, unknown> => {
     const out: Record<string, string> = {};
     const push = (key: string, v: any) => {
@@ -124,12 +113,12 @@ const main = async () => {
     const argsFormat = Object.entries(argsFlat).map(([k, v]) => {
       if (v?.__tree) {
         if (typeof v.__tree[0] !== "number")
-          return [k, { type: "text", content: v.__tree.join(".") }] as const;
+          return [k, { type: "text", content: v.__tree.join("") }] as const;
         return [
           k,
           {
             type: "link",
-            prop: v.__tree.slice(1).join("."),
+            prop: v.__tree.slice(1).join(""),
             source: v.__tree[0],
           },
         ] as const;
@@ -138,7 +127,7 @@ const main = async () => {
     });
 
     const node: GraphNode = {
-      pulumiClass: o.tree.join("."),
+      pulumiClass: o.tree.join(),
       label: o.name,
       argsFlat: argsFormat,
     };

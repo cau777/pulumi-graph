@@ -1,3 +1,4 @@
+// biome-ignore-all
 const objects = [];
 
 function createMock(tree) {
@@ -11,7 +12,7 @@ function createMock(tree) {
         case "__tree":
           return tree;
         default:
-          return createMock([...tree, prop]);
+          return createMock([...tree, "." + String(prop)]);
       }
     },
 
@@ -49,7 +50,7 @@ function createMock(tree) {
     },
   };
 
-  const proxy = new Proxy(() => {}, handler);
+  const proxy = new Proxy(function () { }, handler);
   return proxy;
 }
 

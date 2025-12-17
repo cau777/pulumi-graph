@@ -38,7 +38,7 @@ button:hover {
 }
 .content {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: 30rem 1fr;
   height: calc(100vh - 56px);
 }
 #cy {
@@ -46,7 +46,7 @@ button:hover {
   height: 100%;
 }
 #sidepanel {
-  border-left: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
   padding: 12px;
   overflow: auto;
   background: #fafafa;
@@ -83,6 +83,20 @@ table.kv tr:last-child td,
 table.kv tr:last-child th {
   border-bottom: none;
 }
+table.kv .value-cell {
+  display: flex;
+  gap: 4px;
+    align-items: center;
+}
+
+table.kv .value-cell a {
+  color: blue;
+  text-decoration: underline;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
 .mono {
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
